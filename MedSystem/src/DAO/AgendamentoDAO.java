@@ -25,6 +25,49 @@ import javax.swing.JOptionPane;
  */
 public class AgendamentoDAO {
 
+    public boolean create(Agendamento a, String cpf) {
+
+        Connection con = ConnectionFactory.getConnection();
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+
+            stmt = con.prepareStatement("SELECT * FROM Agendamento WHERE dataAgendamento = str_to_date(?,'%d/%m/%Y') AND horaAgendamento between SUBTIME(TIME_FORMAT(?, '%H:%i'), '00:15:00') and addtime(TIME_FORMAT(?, '%H:%i'), '00:15:00');");
+            stmt.setString(1, a.getDataAgendamento());
+            stmt.setString(2, a.getHoraAgendamento());
+            stmt.setString(3, a.getHoraAgendamento());
+            rs = stmt.executeQuery();
+            if (!rs.isBeforeFirst()) {
+                try {
+                    stmt = con.prepareStatement("INSERT INTO Agendamento (dataAgendamento, horaAgendamento, tipoAgendamento, idSecretaria, idPaciente) VALUES (str_to_date(?,'%d/%m/%Y'),TIME_FORMAT(?, '%H:%i'),?,?,(select idPaciente from Paciente where cpf = ?))");
+                    stmt.setString(1, a.getDataAgendamento());
+                    stmt.setString(2, a.getHoraAgendamento());
+                    stmt.setString(3, a.getTipoAgendamento());
+                    stmt.setInt(4, SecretariaDAO.getIdSecretaria());
+                    stmt.setString(5, cpf);
+
+                    stmt.executeUpdate();
+
+                } catch (SQLException ex) {
+                    Logger.getLogger(SecretariaDAO.class.getName()).log(Level.SEVERE, null, ex);
+                } finally {
+                    stmt.close();
+                    rs.close();
+                }
+
+            } else {
+                JOptionPane.showMessageDialog(null, "ERRO: Esse horário já esta ocupado!");
+                return false;
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(SecretariaDAO.class.getName()).log(Level.SEVERE, null, ex);
+            return false;
+        } finally {
+            ConnectionFactory.closeConnection(con, stmt, rs);
+        }
+        return true;
+    }
+
     public List<Agendamento> readNome(String nome) {
         Connection con = ConnectionFactory.getConnection();
         PreparedStatement stmt = null;
